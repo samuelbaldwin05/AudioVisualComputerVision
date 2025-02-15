@@ -1,5 +1,6 @@
 import cv2
 import os
+import shutil
 
 def extract_frames(video_path, output_dir, frame_rate=1):
     """
@@ -9,8 +10,21 @@ def extract_frames(video_path, output_dir, frame_rate=1):
         output_dir (str): Directory to save extracted frames.
         frame_rate (int): Number of frames to extract per second.
     """
-    # Create output directory if it doesn't exist
-    os.makedirs(output_dir, exist_ok=True)
+    # Clear the output directory if it exists
+    if os.path.exists(output_dir):
+        # Remove all files in the directory
+        for filename in os.listdir(output_dir):
+            file_path = os.path.join(output_dir, filename)
+            try:
+                if os.path.isfile(file_path) or os.path.islink(file_path):
+                    os.unlink(file_path)  # Delete the file
+                elif os.path.isdir(file_path):
+                    shutil.rmtree(file_path)  # Delete the subdirectory
+            except Exception as e:
+                print(f"Failed to delete {file_path}. Reason: {e}")
+    else:
+        # Create the output directory if it doesn't exist
+        os.makedirs(output_dir)
 
     # Open the video
     cap = cv2.VideoCapture(video_path)
