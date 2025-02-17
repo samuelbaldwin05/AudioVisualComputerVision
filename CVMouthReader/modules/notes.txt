@@ -1,0 +1,35 @@
+Downsides of doing it automatically - more difficult explaining methodology in paper. Will likely have to explain methodologies in paper.
+
+Work so far:
+
+Inputs: 
+MP4 movie file
+Script of movie
+
+
+Steps:
+1.
+Extract frames from MP4 movie file at a given FPS
+
+2.
+For each frame, detect scene changes in the frame, detect faces in the frame, calculate if the face in the current frame
+is the same person as previous frames using scene and assumptions about pixel difference in face.
+
+3.
+Calculate mouth openness for each person in each frame, and store data
+
+4.
+Calculate audio spikes and sync movie script with MP4 for each word so you can know when each word was said, 
+and get additional information from script such as character name (help with person recognizition and narrator issues),
+scene changes (help with scene change calculations), and if the words are part of a song (extra info for study).
+
+
+5. 
+From all other data, determine if current word is audio, or audio visual. Transform data from frame based to being 
+word based, although frame based may be better for comparing brain waves (but idk).
+
+
+
+Future steps:
+Multi-threading
+Instead of saving all frames then running on all frames, run on one frame at a time
