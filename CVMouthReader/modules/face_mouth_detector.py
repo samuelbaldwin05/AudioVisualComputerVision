@@ -5,13 +5,12 @@ import os
 import numpy as np
 import pandas as pd
 from collections import defaultdict
-from modules.timer import timer
+from CVMouthReader.modules.utils.timer import timer
 
 # METASYNTATIC VARIABLES
 MEDIAPIPE_MIN_CONFIDENCE = 0.2
-STDEV_THRESH = 0.7
-FRAME_DIFF = 15
 MTCNN_THRESH = 0.95
+FRAME_DIFF = 10
 
 # Suppress TensorFlow and MediaPipe logging
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  # Suppress INFO and WARNING messages
@@ -48,34 +47,11 @@ def calculate_mouth_openness(landmarks, image_shape):
 
     return mouth_openness
 
-def determine_talking(person_tracker, df, scene_number):
-    """
-    Determines if a person is talking based on mouth openness variations.
-    Args:
-        person_tracker (dict): Dictionary tracking people across frames.
-        df (pd.DataFrame): DataFrame containing results.
-        scene_number (int): Current scene number.
-    Returns:
-        pd.DataFrame: Updated DataFrame with "Talking" column.
-    """
-    for person_number, data in person_tracker.items():
-        mouth_openness = data["mouth_openness"]
-        # Filter out None values
-        valid_mouth_openness = [mo for mo in mouth_openness if mo is not None]
-        if len(valid_mouth_openness) > 1:  # Need at least 2 frames to detect variation
-            # Calculate the standard deviation of mouth openness
-            std_dev = np.std(valid_mouth_openness)
-            # If the standard deviation is above a threshold, the person is talking
-            if std_dev > STDEV_THRESH:
-                df.loc[(df["Scene"] == scene_number) & (df["Person"] == person_number), "Talking"] = True
-    return df
-
 @timer
-def detect_faces_and_mouths(frames_dir, output_csv, output_frames_dir, output_frame_interval=None):
+def collect_data(frames_dir, output_csv, output_frames_dir, output_frame_interval=None):
     """
     Detects faces using MTCNN, extracts the face region, and uses MediaPipe Face Mesh
-    to calculate mouth openness. Tracks the same person across frames and determines
-    if they are talking based on mouth openness variations.
+    to calculate mouth openness. Tracks the same person across frames and saves the data.
     Args:
         frames_dir (str): Directory containing extracted frames.
         output_csv (str): Path to save CSV output.
@@ -94,6 +70,8 @@ def detect_faces_and_mouths(frames_dir, output_csv, output_frames_dir, output_fr
 
     # Get list of frames and sort them
     frame_files = sorted(os.listdir(frames_dir))
+
+    # Initialize frame count for returning frames 
     frame_count = 0
 
     # Initialize scene tracking
@@ -180,7 +158,7 @@ def detect_faces_and_mouths(frames_dir, output_csv, output_frames_dir, output_fr
         cv2.putText(frame, f"Scene {scene_number}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
 
         # Save the frame with drawn rectangles (if output_frame_interval is None or the frame is selected)
-        if output_frame_interval is None or frame_count % output_frame_interval == 0:
+        if output_frame_interval is not None and frame_count % output_frame_interval == 0:
             output_frame_path = os.path.join(output_frames_dir, frame_name)
             cv2.imwrite(output_frame_path, frame)
 
@@ -189,13 +167,9 @@ def detect_faces_and_mouths(frames_dir, output_csv, output_frames_dir, output_fr
     # Convert results to DataFrame
     df = pd.DataFrame(results, columns=["Frame", "Scene", "Person", "X", "Y", "W", "H", "Confidence", "Detector", "Mouth Openness"])
 
-    # Add a "Talking" column based on mouth openness variations
-    df["Talking"] = False
-
-    # Determine if people are talking
-    df = determine_talking(person_tracker, df, scene_number)
-
     # Save results to CSV
     df.to_csv(output_csv, index=False)
     print(f"Processed {len(frame_files)} frames. Results saved to {output_csv}")
     print(f"Frames with drawn rectangles saved to {output_frames_dir}")
+
+    return df
