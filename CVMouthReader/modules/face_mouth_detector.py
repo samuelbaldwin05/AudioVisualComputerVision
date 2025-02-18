@@ -9,7 +9,7 @@ from CVMouthReader.modules.utils.timer import timer
 
 # METASYNTATIC VARIABLES
 MEDIAPIPE_MIN_CONFIDENCE = 0.2
-MTCNN_THRESH = 0.95
+MTCNN_THRESH = 0.985
 FRAME_DIFF = 10
 
 # Suppress TensorFlow and MediaPipe logging
