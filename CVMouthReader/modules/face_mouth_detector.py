@@ -1,24 +1,20 @@
 import cv2
 import mediapipe as mp
+import multiprocessing as mproc
 from mtcnn import MTCNN
 import os
 import numpy as np
 import pandas as pd
 from collections import defaultdict
-from CVMouthReader.modules.utils.timer import timer
-
-# METASYNTATIC VARIABLES
-MEDIAPIPE_MIN_CONFIDENCE = 0.2
-MTCNN_THRESH = 0.985
-FRAME_DIFF = 10
+from modules.utils.timer import timer
 
 # Suppress TensorFlow and MediaPipe logging
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  # Suppress INFO and WARNING messages
-os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'  # Disable oneDNN optimizations
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 
 # Initialize MediaPipe Face Mesh for mouth detection
 mp_face_mesh = mp.solutions.face_mesh
-face_mesh = mp_face_mesh.FaceMesh(static_image_mode=True, max_num_faces=1, min_detection_confidence=MEDIAPIPE_MIN_CONFIDENCE)
+face_mesh = mp_face_mesh.FaceMesh(static_image_mode=True, max_num_faces=1, min_detection_confidence=0.2)
 
 # Initialize MTCNN
 mtcnn_detector = MTCNN()
@@ -47,129 +43,176 @@ def calculate_mouth_openness(landmarks, image_shape):
 
     return mouth_openness
 
-@timer
-def collect_data(frames_dir, output_csv, output_frames_dir, output_frame_interval=None):
+def process_frame(frame, frame_number, scene_number, person_tracker, FRAME_DIFF=10, MTCNN_THRESH=0.985):
     """
-    Detects faces using MTCNN, extracts the face region, and uses MediaPipe Face Mesh
-    to calculate mouth openness. Tracks the same person across frames and saves the data.
+    Processes a single frame to detect faces, track people, and calculate mouth openness.
     Args:
-        frames_dir (str): Directory containing extracted frames.
-        output_csv (str): Path to save CSV output.
-        output_frames_dir (str): Directory to save frames with drawn rectangles.
-        output_frame_interval (int, optional): If provided, only save every Nth frame to the output directory.
+        frame (np.array): The frame to process.
+        frame_number (int): The frame number.
+        scene_number (int): The current scene number.
+        person_tracker (dict): Dictionary to track people across frames.
+        FRAME_DIFF (int): Threshold for tracking people across frames.
+        MTCNN_THRESH (float): Confidence threshold for MTCNN face detection.
+    Returns:
+        list: Results for the frame.
     """
-    # Initialize list to store results
     results = []
+    rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
-    # Create output directory if it doesn't exist
-    if not os.path.exists(output_frames_dir):
-        os.makedirs(output_frames_dir)
+    # Detect faces using MTCNN
+    mtcnn_results = mtcnn_detector.detect_faces(rgb_frame)
 
-    # Dictionary to track people across frames
-    person_tracker = defaultdict(lambda: {"frames": [], "mouth_openness": []})
+    # Process each detected face
+    for result in mtcnn_results:
+        x, y, w, h = result['box']
+        confidence = result['confidence']
 
-    # Get list of frames and sort them
-    frame_files = sorted(os.listdir(frames_dir))
+        # Skip this face if confidence is below the threshold
+        if confidence < MTCNN_THRESH:
+            continue
 
-    # Initialize frame count for returning frames 
-    frame_count = 0
+        # Ensure the face region is valid
+        if w > 0 and h > 0:
+            # Extract the face region
+            face_region = rgb_frame[y:y+h, x:x+w]
 
-    # Initialize scene tracking
-    scene_number = 0
+            # Use MediaPipe Face Mesh to detect landmarks in the face region
+            face_mesh_results = face_mesh.process(face_region)
+
+            mouth_openness = None
+            if face_mesh_results.multi_face_landmarks:
+                for face_landmarks in face_mesh_results.multi_face_landmarks:
+                    # Calculate mouth openness
+                    mouth_openness = calculate_mouth_openness(face_landmarks.landmark, face_region.shape)
+
+            # Check if this person is already being tracked within ±10 pixels
+            found_person = False
+            person_number = None
+            for existing_person, data in person_tracker.items():
+                existing_x, existing_y, existing_w, existing_h = data["last_position"]
+                if (abs(existing_x - x) <= FRAME_DIFF and
+                    abs(existing_y - y) <= FRAME_DIFF and
+                    abs(existing_w - w) <= FRAME_DIFF and
+                    abs(existing_h - h) <= FRAME_DIFF):
+                    found_person = True
+                    person_number = existing_person
+                    break
+
+            # If not found, assign a new person number
+            if not found_person:
+                person_number = len(person_tracker) + 1  # Start from 1 for each scene
+                person_tracker[person_number] = {"last_position": (x, y, w, h), "frames": [], "mouth_openness": []}
+
+            # Update the person's data
+            person_tracker[person_number]["frames"].append(frame_number)
+            person_tracker[person_number]["mouth_openness"].append(mouth_openness)
+            person_tracker[person_number]["last_position"] = (x, y, w, h)
+
+            # Store results in the list
+            results.append([frame_number, scene_number, person_number, x, y, w, h, confidence, "mtcnn", mouth_openness])
+
+    return results
+
+def process_frame_batch(frame_batch, scene_number, person_tracker):
+    """
+    Processes a batch of frames.
+    Args:
+        frame_batch (list): List of tuples containing (frame_number, frame).
+        scene_number (int): The current scene number.
+        person_tracker (dict): Dictionary to track people across frames.
+    Returns:
+        list: Results for the batch.
+    """
+    results = []
     prev_frame = None
 
-    # Process each frame
-    for frame_name in frame_files:
-        frame_path = os.path.join(frames_dir, frame_name)
-        frame = cv2.imread(frame_path)
-
-        # Convert frame to RGB (MTCNN and MediaPipe require RGB)
-        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-
+    for frame_number, frame in frame_batch:
         # Detect drastic changes between frames to update the scene
         if prev_frame is not None:
-            diff = cv2.absdiff(prev_frame, rgb_frame)
+            diff = cv2.absdiff(prev_frame, frame)
             diff_mean = np.mean(diff)
-            if diff_mean > 30:  # Threshold for scene change (adjust as needed)
+            if diff_mean > 30:  # Threshold for scene change
                 scene_number += 1
                 person_tracker.clear()  # Reset person tracking for the new scene
 
-        prev_frame = rgb_frame
+        prev_frame = frame
+        frame_results = process_frame(frame, frame_number, scene_number, person_tracker)
+        results.extend(frame_results)
 
-        # Detect faces using MTCNN
-        mtcnn_results = mtcnn_detector.detect_faces(rgb_frame)
+    return results
 
-        # Process each detected face
-        for result in mtcnn_results:
-            x, y, w, h = result['box']
-            confidence = result['confidence']
+@timer
+def process_video(video_path, output_csv, extract_fps=1, num_processes=5):
+    """
+    Processes a video frame-by-frame using multiprocessing.
+    Args:
+        video_path (str): Path to the input video file.
+        output_csv (str): Path to save CSV output.
+        extract_fps (int): Frames per second to extract.
+        num_processes (int): Number of processes to use for multiprocessing.
+    """
+    # Open video file
+    cap = cv2.VideoCapture(video_path)
+    if not cap.isOpened():
+        raise ValueError(f"Could not open video file: {video_path}")
 
-            # Skip this face if confidence is below the threshold
-            if confidence < MTCNN_THRESH:
-                continue  # Skip to the next face
+    # Get video properties
+    video_fps = cap.get(cv2.CAP_PROP_FPS)
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
-            # Ensure the face region is valid
-            if w > 0 and h > 0:  # Skip invalid face regions
-                # Extract the face region
-                face_region = rgb_frame[y:y+h, x:x+w]
+    # Calculate frame interval based on extraction FPS
+    if extract_fps is None:
+        save_every_n_frames = 1  # Save every frame
+        extract_fps = video_fps
+    else:
+        save_every_n_frames = max(1, int(video_fps / extract_fps))
 
-                # Use MediaPipe Face Mesh to detect landmarks in the face region
-                face_mesh_results = face_mesh.process(face_region)
+    # Initialize scene tracking
+    scene_number = 0
 
-                mouth_openness = None
-                if face_mesh_results.multi_face_landmarks:
-                    for face_landmarks in face_mesh_results.multi_face_landmarks:
-                        # Calculate mouth openness
-                        mouth_openness = calculate_mouth_openness(face_landmarks.landmark, face_region.shape)
+    # Initialize results list
+    all_results = []
 
-                # Check if this person is already being tracked within ±10 pixels
-                found_person = False
-                person_number = None
-                for existing_person, data in person_tracker.items():
-                    existing_x, existing_y, existing_w, existing_h = data["last_position"]
-                    if (abs(existing_x - x) <= FRAME_DIFF and
-                        abs(existing_y - y) <= FRAME_DIFF and
-                        abs(existing_w - w) <= FRAME_DIFF and
-                        abs(existing_h - h) <= FRAME_DIFF):
-                        found_person = True
-                        person_number = existing_person
-                        break
+    # Use a multiprocessing Manager to create a shared dictionary for person_tracker
+    manager = mproc.Manager()
+    person_tracker = manager.dict()
 
-                # If not found, assign a new person number
-                if not found_person:
-                    person_number = len(person_tracker) + 1  # Start from 1 for each scene
-                    person_tracker[person_number] = {"last_position": (x, y, w, h), "frames": [], "mouth_openness": []}
+    # Multiprocessing setup
+    pool = mproc.Pool(processes=num_processes)
+    frame_batches = []
+    current_batch = []
+    batch_size = 10  # Number of frames per batch
 
-                # Update the person's data
-                person_tracker[person_number]["frames"].append(frame_name)
-                person_tracker[person_number]["mouth_openness"].append(mouth_openness)
-                person_tracker[person_number]["last_position"] = (x, y, w, h)
+    frame_index = 0
+    while True:
+        success, frame = cap.read()
+        if not success:
+            break
 
-                # Draw rectangle around the face and display person number and talking status
-                cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
-                talking_status = "Talking" if mouth_openness is not None and mouth_openness > 1.0 else "Not Talking"
-                cv2.putText(frame, f"Person {person_number} {talking_status}", (x, y - 10),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+        if frame_index % save_every_n_frames == 0:
+            current_batch.append((frame_index, frame))
+            if len(current_batch) >= batch_size:
+                frame_batches.append(current_batch)
+                current_batch = []
 
-                # Store results in the list
-                results.append([frame_name, scene_number, person_number, x, y, w, h, confidence, "mtcnn", mouth_openness])
+        frame_index += 1
 
-        # Draw scene number in the top-left corner
-        cv2.putText(frame, f"Scene {scene_number}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
+    if current_batch:
+        frame_batches.append(current_batch)
 
-        # Save the frame with drawn rectangles (if output_frame_interval is None or the frame is selected)
-        if output_frame_interval is not None and frame_count % output_frame_interval == 0:
-            output_frame_path = os.path.join(output_frames_dir, frame_name)
-            cv2.imwrite(output_frame_path, frame)
-
-        frame_count += 1
+    # Process frames in parallel
+    for results in pool.starmap(process_frame_batch, [(batch, scene_number, person_tracker) for batch in frame_batches]):
+        all_results.extend(results)
 
     # Convert results to DataFrame
-    df = pd.DataFrame(results, columns=["Frame", "Scene", "Person", "X", "Y", "W", "H", "Confidence", "Detector", "Mouth Openness"])
+    df = pd.DataFrame(all_results, columns=["Frame", "Scene", "Person", "X", "Y", "W", "H", "Confidence", "Detector", "Mouth Openness"])
 
     # Save results to CSV
     df.to_csv(output_csv, index=False)
-    print(f"Processed {len(frame_files)} frames. Results saved to {output_csv}")
-    print(f"Frames with drawn rectangles saved to {output_frames_dir}")
+    print(f"Processed {len(all_results)} mouth detections from {total_frames} total frames")
+    print(f"Video FPS: {video_fps:.2f}, Extraction FPS: {extract_fps or video_fps:.2f}")
+    print(f"Saved results to: {output_csv}")
 
-    return df
+    cap.release()
+    pool.close()
+    pool.join()
