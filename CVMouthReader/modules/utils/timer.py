@@ -17,15 +17,30 @@ def timer(func: Callable[..., Any]) -> Callable[..., Any]:
     """
     @wraps(func)
     def timeit_wrapper(*args: Tuple[Any], **kwargs: Any) -> Any:
-        start_time = time.process_time_ns()
+        # Start timing
+        start_time = time.time_ns()  # Use time_ns() for wall-clock time
         result = func(*args, **kwargs)
-        end_time = time.process_time_ns()
+        # End timing
+        end_time = time.time_ns()
         total_time_ns = end_time - start_time
+
+        # Convert nanoseconds to minutes and seconds
         total_seconds = total_time_ns / 1e9
         minutes = int(total_seconds // 60)
         seconds = total_seconds % 60
-        formatted_time = f"{minutes}:{seconds:.2f}"
-        log_message = f'Function {func.__name__}{args} {kwargs} Took {total_time_ns} ns. {formatted_time}\n'
+
+        # Format minutes and seconds with leading zeros
+        formatted_minutes = f"{minutes:02d}"  # Ensures 2 digits (e.g., 05)
+        formatted_seconds = f"{seconds:06.3f}"  # Ensures 6 characters with 3 decimal places (e.g., 09.123)
+
+        # Format the total time as MM:SS.sss
+        formatted_time = f"{formatted_minutes}:{formatted_seconds}"
+
+        # Log message
+        log_message = (
+            f'Function {func.__name__}{args} {kwargs} '
+            f'Took {total_time_ns} ns ({formatted_time})\n'
+        )
 
         # Print to console
         print(log_message, end="")
