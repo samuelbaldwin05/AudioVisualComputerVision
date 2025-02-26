@@ -30,6 +30,8 @@ word based, although frame based may be better for comparing brain waves (but id
 
 
 Right now to do:
+Function that converts frames back into video. So that I can watch the movie with the frame overlay.
+
 Test improvements to detecting talking over a period of frames, not just using std dev
 Include song data
 Convert talking vs not talking to audio visual vs audio, this should take account for things like if no frame is associated at all, assume just audio
@@ -37,8 +39,6 @@ Visualization over audio vs audio visual vs nothing over span of movie, so that 
  
 
 
-
-
 Future steps:
-Multi-threading
+Multi-processesing
 Instead of saving all frames then running on all frames, run on one frame at a time
