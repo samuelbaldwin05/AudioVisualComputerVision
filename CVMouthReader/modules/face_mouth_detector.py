@@ -20,7 +20,7 @@ face_mesh = mp_face_mesh.FaceMesh(static_image_mode=True, max_num_faces=1, min_d
 mtcnn_detector = MTCNN()
 
 def calculate_mouth_openness(landmarks, image_shape):
-    """ (unchanged from original) """
+    """Calculates the distance between the upper and lower lip points."""
     ih, iw, _ = image_shape
     upper_lip_idx = 13
     lower_lip_idx = 14
@@ -30,7 +30,7 @@ def calculate_mouth_openness(landmarks, image_shape):
     return mouth_openness
 
 def process_frame(frame, frame_number, scene_number, person_tracker, FRAME_DIFF=10, MTCNN_THRESH=0.985):
-    """ (unchanged from original) """
+    """Processes a video frame to detect faces, track individuals, and estimate mouth openness."""
     results = []
     rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     mtcnn_results = mtcnn_detector.detect_faces(rgb_frame)
@@ -75,13 +75,7 @@ def process_frame(frame, frame_number, scene_number, person_tracker, FRAME_DIFF=
 
 @timer
 def process_video(video_path, output_csv, extract_fps=1):
-    """
-    Processes a video frame-by-frame sequentially with a progress bar.
-    Args:
-        video_path (str): Path to the input video file.
-        output_csv (str): Path to save CSV output.
-        extract_fps (int): Frames per second to extract.
-    """
+    """Processes a video frame-by-frame, tracks faces, and saves results to a CSV file."""
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
         raise ValueError(f"Could not open video file: {video_path}")
