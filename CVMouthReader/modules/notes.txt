@@ -37,8 +37,77 @@ Include song data
 Convert talking vs not talking to audio visual vs audio, this should take account for things like if no frame is associated at all, assume just audio
 Visualization over audio vs audio visual vs nothing over span of movie, so that it could be compared to brain wave data
  
+Questions:
+
 
 
 Future steps:
-Multi-processesing
-Instead of saving all frames then running on all frames, run on one frame at a time
+
+Get full movie dataset from HPC Cluster
+Use already gathered undergrad data to compare to my create talking data, create algorithms to calculate talking
+from mouth openness over a number of frames. What is the best way to do it? Compare methods vs actual results
+of prior data collected. 
+
+Song data: What is this looking for? If I am thinking correctly, would it be possible to compare online scripts
+of the song data to the script of the movie and just see in which parts of the movie are the words in the songs
+being said. 
+
+Audio collection? I tried, but had little success with FFmpeg, but could try wave or something else
+
+WATCH THE MOVIE
+
+Frontend app to allow people to watch through the movie maybe at a speed of their choice or just allow them to 
+click next to look at frames easier, then since frame data is already stored, show the anticipated word, and 
+the computers determination of it is audio visual. Then allow user to agree or disagree. If they disagree 
+have them enter their own determination of the frame, and maybe a confidence in their own correctness. 
+
+Keep frames with low confidence from computer + low confidence from human to be looked through by other human
+
+This WOULD require some audio stuff to determine if the word is correct. 
+
+
+Are we interested in looking at more frames in the future? 
+
+
+
+Ideas: 
+
+Instead of using Frame diff, mesh whole face and compare face mesh across frames to determine same person?
+
+Keep all of data, do not drop data with no corresponding word as mouth openness before and after is still valuable to 
+talking algorithm
+
+Compress to optimize time. Maybe only have the image intial search for faces in a chunk of the next frame 
+that is near previous frames face
+
+Consider what you want final product to be, should EVERY SINGLE FRAME have a data point, or only frames with
+a detected face and mouth movement. Initially only frames where a word was spoken, but this is bad since mouth
+openness is important
+
+Things to consider:  should I only be looking at frames in the given time of someone talking (maybe a little
+give + a second or so on either side)
+
+Is it valuable to recreate this back into a movie after to improve data collection viewing. 
+What do we think the best way of going about using this data is  
+
+
+Develop better approach to determining same person across frames, potentially store more face data and if face 
+data is similar, it is same person. This is better than just guessing square distance. 
+
+
+INSTEAD OF STORING AUDIO VISUAL BOOLEAN, store person talking number. Same data can be extract, solely
+provides more information.
+
+
+
+NEURO IMAGING:
+I was also interested in looking into analyzing the brain data, what could I do for that
+
+
+MAIN TOPICS: 
+Need help setting up cluster, talk about future uses (effects my design), discuss areas of my uncertainty:
+
+best way to determine talking over a number of frames? is the interface necessary? 
+
+
+Person tracking is not working, probably don't ever want this number going down (15 - 4)
