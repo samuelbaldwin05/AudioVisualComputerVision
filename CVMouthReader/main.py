@@ -1,5 +1,5 @@
 from modules.face_mouth_detector import process_video
-from modules.data_analysis import analyze_talking, merge_onset_with_frames
+from modules.data_analysis import analyze_talking, analyze_talking_method2, merge_onset_with_frames
 
 def main():
     # Paths
@@ -7,21 +7,22 @@ def main():
     transcript_path = "CVMouthReader/data/input/smithscut.csv"              # Transcript
     output_mouth_csv = "CVMouthReader/data/output/face_mouth_data3.csv"     # Output mouth openness per frame CSV
     transcript_output_csv = "CVMouthReader/data/input/smithscutwords.csv"   # Output aligned script 
-    final_csv = "CVMouthReader/data/output/final.csv"                       # Final CSV
+    final_csv = "CVMouthReader/data/output/final2.csv"                       # Final CSV
+    final_csv2 = "CVMouthReader/data/output/final5.csv"                       # Final CSV
 
     # Step 1: Process video and detect mouth openness
     print("Processing video and detecting mouth openness...")
     process_video(video_path, output_mouth_csv, extract_fps=24)
 
-    # Step 2: Process the transcript and generate final results
+    # Step 2: Generate audio visual boolean from mouth openess
     # print("Processing transcript and generating final results...")
-    # analyze_talking(transcript_path, video_path, transcript_output_csv, fps=30)
+    # analyze_talking_method2(final_csv, final_csv2)
+
     # # Step 3: Merge with transcript data
     # print("Merging dataframes:")
-    # merge_onset_with_frames(output_mouth_csv, transcript_output_csv, final_rrcsv, fps=30)
+    # merge_onset_with_frames(transcript_output_csv, output_mouth_csv, final_csv, fps=24)
 
-    # Step 4: Visualize (if needed)
-    # Add visualization logic here if required
+
 
 if __name__ == "__main__":
     main()
