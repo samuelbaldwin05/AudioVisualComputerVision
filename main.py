@@ -1,14 +1,13 @@
-from modules.face_mouth_detector import process_video
+from modules.alldata_face_mouth_detector import process_video
 from modules.data_analysis import analyze_talking, analyze_talking_method2, merge_onset_with_frames
 
 def main():
     # Paths
-    video_path = "CVMouthReader/data/input/smithscut.mp4"                   # Video
-    transcript_path = "CVMouthReader/data/input/smithscut.csv"              # Transcript
-    output_mouth_csv = "CVMouthReader/data/output/face_mouth_data3.csv"     # Output mouth openness per frame CSV
-    transcript_output_csv = "CVMouthReader/data/input/smithscutwords.csv"   # Output aligned script 
-    final_csv = "CVMouthReader/data/output/final2.csv"                       # Final CSV
-    final_csv2 = "CVMouthReader/data/output/final5.csv"                       # Final CSV
+    video_path = "data/input/smithscut.mp4"                   # Video
+    transcript_path = "data/input/smithscut.csv"              # Transcript
+    output_mouth_csv = "data/output/face_mouth_data3.csv"     # Output mouth openness per frame CSV
+    transcript_output_csv = "data/input/smithscutwords.csv"   # Output aligned script 
+    final_csv = "data/output/final2.csv"                      # Final CSV
 
     # Step 1: Process video and detect mouth openness
     print("Processing video and detecting mouth openness...")
