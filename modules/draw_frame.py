@@ -114,16 +114,16 @@ def draw_boxes_and_save_video(video_path, csv_path, output_video_path):
     print(f"Video saved to: {output_video_path}")
 
 
-# video_path = 'CVMouthReader/data/input/smithscut.mp4'
-# csv_path = 'CVMouthReader/data/output/final.csv'
-# frame_number = 150
+video_path = 'data/input/smithscut.mp4'
+csv_path = 'data/output/final.csv'
+frame_number = 150
 
-# # Get the processed frame
-# processed_frame = draw_boxes_on_frame(video_path, csv_path, frame_number)
+# Get the processed frame
+processed_frame = draw_boxes_on_frame(video_path, csv_path, frame_number)
 
 
-video_path = 'CVMouthReader/data/input/smithscut.mp4'
-csv_path = 'CVMouthReader/data/output/final2.csv'
-output_video_path = 'CVMouthReader/data/output/processed_output.mp4'
+video_path = 'data/input/smithscut.mp4'
+csv_path = 'data/output/final2.csv'
+output_video_path = 'data/output/processed_output.mp4'
 
-draw_boxes_and_save_video(video_path, csv_path, output_video_path)
+#draw_boxes_and_save_video(video_path, csv_path, output_video_path)

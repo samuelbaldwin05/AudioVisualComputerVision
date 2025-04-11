@@ -3,7 +3,7 @@ import time
 from typing import Any, Callable, Tuple
 
 # Hardcoded log file name
-LOG_FILE = "CVMouthReader/data/output/execution_times.txt"
+LOG_FILE = "data/output/execution_times.txt"
 
 def timer(func: Callable[..., Any]) -> Callable[..., Any]:
     """
@@ -38,7 +38,7 @@ def timer(func: Callable[..., Any]) -> Callable[..., Any]:
 
         # Log message
         log_message = (
-            f'Function {func.__name__}{args} {kwargs} '
+            f'Function {func.__name__}{args}{kwargs} '
             f'Took {total_time_ns} ns ({formatted_time})\n'
         )
 

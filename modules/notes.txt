@@ -111,3 +111,17 @@ best way to determine talking over a number of frames? is the interface necessar
 
 
 Person tracking is not working, probably don't ever want this number going down (15 - 4)
+
+
+
+
+
+CLUSTER TESTS:
+Test 1
+2 cpu short test. 4 GB Ram. 11:44 to complete 10 second test video. NO multiprocessing.
+
+Test 2
+Gpu short test. 4 cpu, a100, 32 GB Ram, cuda 11.8. Force ended after 15+ minutes? Yes multiprocessing, no cuda implementation
+
+Test 3
+8 cpu short test. 64 GB Ram. YES multiprocessing. 
