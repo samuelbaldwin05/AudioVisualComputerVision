@@ -1,18 +1,9 @@
-# Core dependencies
-numpy==1.26.4              # Compatible version for Numba
-numba==0.58.1              # JIT compiler for optimization
-pandas==2.1.4              # CSV handling and data processing
-opencv-python==4.9.0.80    # Computer vision (OpenCV for face detection)
-mediapipe==0.10.9          # Facial landmark detection
-mtcnn==0.1.1               # Face detection using MTCNN
-moviepy==1.0.3             # Video processing
-whisper==1.1.10            # OpenAI Whisper for transcription
-PyMuPDF==1.23.3            # Extracting text from PDFs (aka Fitz)
-difflib2==0.1.3            # Advanced string matching (script alignment)
 
-# Audio & Video processing dependencies
-imageio==2.33.1            # Required for MoviePy
-imageio[ffmpeg]            # FFmpeg support for audio processing
-
-# Optional: if you need to install FFmpeg manually
-# ffmpeg==1.4               # May not be needed if FFmpeg is installed system-wide
+opencv-python>=4.5.0,<4.8.0
+mediapipe>=0.8.10,<0.10.0
+numpy>=1.20.0,<2.0.0
+pandas>=1.3.0,<2.1.0
+torch>=1.9.0,<2.1.0
+insightface>=0.6.0,<0.7.0
+tqdm>=4.62.0
+onnxruntime-gpu>=1.10.0,<1.16.0
