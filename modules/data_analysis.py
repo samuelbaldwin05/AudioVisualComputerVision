@@ -165,3 +165,50 @@ def merge_onset_with_frames(onset_csv, frame_csv, fps):
     frame_df = frame_df[reordered_columns]
 
     return frame_df
+
+def convert_time_to_frames(onset_csv, output_csv, fps):
+    """
+    Converts time-based annotations to frame-based annotations.
+    
+    Takes a CSV with start_time and end_time (in seconds) and converts them
+    to start_frame and end_frame based on the specified FPS, while preserving
+    all other columns and data.
+    """
+    # Load the data
+    onset_df = pd.read_csv(onset_csv)
+    
+    # Clean column names by stripping whitespace
+    onset_df.columns = [col.strip() for col in onset_df.columns]
+    
+    # Print columns to help debugging
+    print(f"Input CSV columns: {list(onset_df.columns)}")
+    
+    # Verify required columns exist
+    required_columns = ['start_time', 'end_time']
+    for col in required_columns:
+        if col not in onset_df.columns:
+            # Try case-insensitive match
+            matching_cols = [c for c in onset_df.columns if c.lower() == col.lower()]
+            if matching_cols:
+                # Rename the column to the expected name
+                onset_df = onset_df.rename(columns={matching_cols[0]: col})
+            else:
+                raise ValueError(f"Required column '{col}' not found in input CSV")
+    
+    # Convert time values to frame numbers
+    onset_df['start_frame'] = (onset_df['start_time'] * fps).astype(int)
+    onset_df['end_frame'] = (onset_df['end_time'] * fps).astype(int)
+    
+    # Make sure there are no zero-length frames
+    onset_df.loc[onset_df['end_frame'] <= onset_df['start_frame'], 'end_frame'] = onset_df['start_frame'] + 1
+    
+    # Sort by start_frame for consistent ordering
+    onset_df = onset_df.sort_values(by="start_frame").reset_index(drop=True)
+    
+    # Save the converted dataframe to CSV
+    onset_df.to_csv(output_csv, index=False)
+    
+    print(f"Converted {len(onset_df)} entries from time to frames")
+    print(f"Results saved to: {output_csv}")
+    
+    return onset_df
